@@ -1,8 +1,7 @@
   
 export default function Home() {
   return (
-    <div>
-      Hellow world 
+    <div className="mt-40">
     </div>
   );
 }

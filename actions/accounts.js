@@ -29,19 +29,54 @@ export async function updateDefaultAccount(accountId) {
     }
 
     await db.account.updateMany({
-        where: {userId: user.id, isDefault: true},
-        data: {isDefault: false}
-    })
+      where: { userId: user.id, isDefault: true },
+      data: { isDefault: false },
+    });
 
     const account = await db.account.update({
-        where: {id: accountId, userId: user.id},
-        data: {isDefault: true}
+      where: { id: accountId, userId: user.id },
+      data: { isDefault: true },
     });
 
     revalidatePath("/dashboard");
-    return {success: true, data: serializeTransaction(account)}
-
+    return { success: true, data: serializeTransaction(account) };
   } catch (error) {
-    return {success: false, message: error.message}
+    return { success: false, message: error.message };
+  }
+}
+
+export async function getAccountWithTransactions(accountId) {
+  try {
+    const { userId } = await auth();
+    if (!userId) throw new Error("Unauthorized");
+
+    const user = await db.user.findUnique({
+      where: { clerkUserId: userId },
+    });
+
+    if (!user) {
+      throw new Error("User not found");
+    }
+
+    const account = await db.account.findUnique({
+      where: { userId: user.id, id: accountId },
+      include: {
+        transactions: {
+          orderBy: { date: "desc" },
+        },
+        _count: {
+          select: { transactions: true },
+        },
+      },
+    });
+
+    if(!account) return null;
+
+    return {
+        ...serializeTransaction(account),
+        transactions: account.transactions.map(serializeTransaction)
+    }
+  } catch (error) {
+    console.log(error.message);
   }
 }
